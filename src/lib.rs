@@ -3,8 +3,8 @@ use std::marker::PhantomData;
 mod decoders;
 
 pub use decoders::{
-    boolean, field, float, integer, list, map1, map10, map11, map12, map2, map3, map4, map5, map6,
-    map7, map8, map9, string,
+    boolean, field, float, integer, list, map, map10, map11, map12, map2, map3, map4, map5, map6,
+    map7, map8, map9, option, string,
 };
 
 pub trait Decoder<'a, DecodesTo> {

@@ -167,17 +167,44 @@ impl<'a> Decoder<'a, bool> for BooleanDecoder {
     }
 }
 
-pub fn list<'a, Item, Collection, InnerDecoder>(
-    decoder: InnerDecoder,
-) -> impl Decoder<'a, Collection>
+pub fn option<'a, DecodesTo>(
+    decoder: Box<dyn Decoder<'a, DecodesTo> + 'a>,
+) -> Box<dyn Decoder<'a, Option<DecodesTo>> + 'a>
 where
-    Collection: FromIterator<Item>,
-    InnerDecoder: Decoder<'a, Item> + 'static,
+    DecodesTo: 'a,
 {
-    ListDecoder {
-        inner_decoder: Box::new(decoder),
-        phantom: PhantomData,
+    Box::new(OptionDecoder {
+        inner_decoder: decoder,
+    })
+}
+
+pub struct OptionDecoder<'a, DecodesTo> {
+    inner_decoder: Box<dyn Decoder<'a, DecodesTo> + 'a>,
+}
+
+impl<'a, DecodesTo> Decoder<'a, Option<DecodesTo>> for OptionDecoder<'a, DecodesTo>
+where
+    DecodesTo: 'a,
+{
+    fn decode(&self, value: &serde_json::Value) -> Result<Option<DecodesTo>, DecodeError> {
+        match value {
+            serde_json::Value::Null => Ok(None),
+            other => self.inner_decoder.decode(value).map(Some),
+        }
     }
+}
+
+pub fn list<'a, Item, Collection>(
+    decoder: Box<dyn Decoder<'a, Item> + 'a>,
+) -> Box<dyn Decoder<'a, Collection> + 'a>
+where
+    Collection: FromIterator<Item> + 'a,
+    Item: 'a,
+{
+    Box::new(ListDecoder {
+        inner_decoder: decoder,
+        phantom: PhantomData,
+    })
 }
 
 pub struct ListDecoder<'a, Item, DecodesTo: FromIterator<Item>> {
