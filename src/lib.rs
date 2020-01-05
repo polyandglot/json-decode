@@ -3,8 +3,8 @@ use std::marker::PhantomData;
 mod decoders;
 
 pub use decoders::{
-    boolean, field, float, integer, map1, map10, map11, map12, map2, map3, map4, map5, map6, map7,
-    map8, map9, string,
+    boolean, field, float, integer, list, map1, map10, map11, map12, map2, map3, map4, map5, map6,
+    map7, map8, map9, string,
 };
 
 pub trait Decoder<'a, DecodesTo> {
@@ -47,12 +47,12 @@ mod tests {
 
     #[test]
     fn decode_a_struct() {
-        let selection_set = map1(TestStruct::new, field("field_one", string()));
+        let decoder = map1(TestStruct::new, field("field_one", string()));
 
         let json = serde_json::from_str(r#"{"field_one": "test"}"#).unwrap();
 
         assert_eq!(
-            selection_set.decode(&json),
+            decoder.decode(&json),
             Ok(TestStruct {
                 field_one: "test".to_string()
             })
@@ -83,7 +83,7 @@ mod tests {
 
     #[test]
     fn one_of_the_macro_map_fns() {
-        let selection_set = map4(
+        let decoder = map4(
             Test4Struct::new,
             field("field_one", string()),
             field("field_two", integer()),
@@ -94,13 +94,30 @@ mod tests {
         let json = serde_json::json!({"field_one": "test", "field_two": 10000, "field_three": true, "field_four": 1.0});
 
         assert_eq!(
-            selection_set.decode(&json),
+            decoder.decode(&json),
             Ok(Test4Struct {
                 field_one: "test".to_string(),
                 field_two: 10000,
                 field_three: true,
                 field_four: 1.0
             })
+        )
+    }
+
+    #[test]
+    fn decoding_a_list() {
+        let decoder = list::<_, Vec<_>, _>(string());
+
+        let json = serde_json::json!(["one", "two", "three", "four"]);
+
+        assert_eq!(
+            decoder.decode(&json),
+            Ok(vec![
+                "one".to_string(),
+                "two".to_string(),
+                "three".to_string(),
+                "four".to_string()
+            ])
         )
     }
 }

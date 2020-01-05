@@ -1,4 +1,5 @@
 use super::{DecodeError, Decoder};
+use std::iter::FromIterator;
 use std::marker::PhantomData;
 
 pub fn field<'a, T>(
@@ -145,6 +146,42 @@ impl<'a> Decoder<'a, bool> for BooleanDecoder {
             serde_json::Value::Bool(b) => Ok(*b),
             _ => Err(DecodeError::IncorrectType(
                 "Boolean".to_string(),
+                value.to_string(),
+            )),
+        }
+    }
+}
+
+pub fn list<'a, Item, Collection, InnerDecoder>(
+    decoder: InnerDecoder,
+) -> impl Decoder<'a, Collection>
+where
+    Collection: FromIterator<Item>,
+    InnerDecoder: Decoder<'a, Item> + 'static,
+{
+    ListDecoder {
+        inner_decoder: Box::new(decoder),
+        phantom: PhantomData,
+    }
+}
+
+pub struct ListDecoder<'a, Item, DecodesTo: FromIterator<Item>> {
+    phantom: PhantomData<DecodesTo>,
+    inner_decoder: Box<dyn Decoder<'a, Item>>,
+}
+
+impl<'a, Item, DecodesTo> Decoder<'a, DecodesTo> for ListDecoder<'a, Item, DecodesTo>
+where
+    DecodesTo: FromIterator<Item>,
+{
+    fn decode(&self, value: &serde_json::Value) -> Result<DecodesTo, DecodeError> {
+        match value {
+            serde_json::Value::Array(vec) => vec
+                .iter()
+                .map(|item| (*self.inner_decoder).decode(item))
+                .collect(),
+            _ => Err(DecodeError::IncorrectType(
+                "Array".to_string(),
                 value.to_string(),
             )),
         }
