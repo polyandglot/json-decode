@@ -371,3 +371,16 @@ where
         serde_json::from_value(value.clone()).map_err(|e| DecodeError::SerdeError(e.to_string()))
     }
 }
+
+pub fn json<'a>() -> Box<dyn Decoder<'a, serde_json::Value> + 'a> {
+    Box::new(JsonDecoder {})
+}
+
+pub struct JsonDecoder {}
+
+impl<'a> Decoder<'a, serde_json::Value> for JsonDecoder {
+    fn decode(&self, value: &serde_json::Value) -> Result<serde_json::Value, DecodeError> {
+        // TODO: Figure out if we can get rid of this clone somehow?
+        Ok(value.clone())
+    }
+}
