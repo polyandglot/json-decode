@@ -2,7 +2,10 @@ use std::marker::PhantomData;
 
 mod decoders;
 
-pub use decoders::{field, map1, string};
+pub use decoders::{
+    boolean, field, float, integer, map1, map10, map11, map12, map2, map3, map4, map5, map6, map7,
+    map8, map9, string,
+};
 
 pub trait Decoder<'a, DecodesTo> {
     // OK, so theoretically this needs to store some functions & some collection of arguments.
@@ -19,6 +22,7 @@ pub trait Decoder<'a, DecodesTo> {
 pub enum DecodeError {
     MissingField(String),
     IncorrectType(String, String),
+    InvalidInteger(String),
     SerdeError(String),
 }
 
@@ -51,6 +55,51 @@ mod tests {
             selection_set.decode(&json),
             Ok(TestStruct {
                 field_one: "test".to_string()
+            })
+        )
+    }
+
+    #[derive(Debug, PartialEq)]
+    struct Test4Struct {
+        field_one: String,
+        field_two: i64,
+        field_three: bool,
+        field_four: f64,
+    }
+
+    impl Test4Struct {
+        fn new(field_one: String, field_two: i64, field_three: bool, field_four: f64) -> Self {
+            Test4Struct {
+                field_one,
+                field_two,
+                field_three,
+                field_four,
+            }
+        }
+    }
+
+    // TODO: HashMaps, Arrays etc.
+    // TODO: failure cases.
+
+    #[test]
+    fn one_of_the_macro_map_fns() {
+        let selection_set = map4(
+            Test4Struct::new,
+            field("field_one", string()),
+            field("field_two", integer()),
+            field("field_three", boolean()),
+            field("field_four", float()),
+        );
+
+        let json = serde_json::json!({"field_one": "test", "field_two": 10000, "field_three": true, "field_four": 1.0});
+
+        assert_eq!(
+            selection_set.decode(&json),
+            Ok(Test4Struct {
+                field_one: "test".to_string(),
+                field_two: 10000,
+                field_three: true,
+                field_four: 1.0
             })
         )
     }

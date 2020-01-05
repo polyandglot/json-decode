@@ -49,6 +49,199 @@ impl<'a> Decoder<'a, String> for StringDecoder {
     }
 }
 
+pub fn integer<'a, I: From<i64>>() -> impl Decoder<'a, I> {
+    IntDecoder {
+        phantom: PhantomData,
+    }
+}
+
+pub struct IntDecoder<I: From<i64>> {
+    phantom: PhantomData<I>,
+}
+
+impl<'a, I> Decoder<'a, I> for IntDecoder<I>
+where
+    I: From<i64>,
+{
+    fn decode(&self, value: &serde_json::Value) -> Result<I, DecodeError> {
+        match value {
+            serde_json::Value::Number(n) => n
+                .as_i64()
+                .map(Into::into)
+                .ok_or(DecodeError::InvalidInteger(value.to_string())),
+            _ => Err(DecodeError::IncorrectType(
+                "Number".to_string(),
+                value.to_string(),
+            )),
+        }
+    }
+}
+
+pub fn unsigned_integer<'a, I: From<u64>>() -> impl Decoder<'a, I> {
+    UIntDecoder {
+        phantom: PhantomData,
+    }
+}
+
+pub struct UIntDecoder<I: From<u64>> {
+    phantom: PhantomData<I>,
+}
+
+impl<'a, I> Decoder<'a, I> for UIntDecoder<I>
+where
+    I: From<u64>,
+{
+    fn decode(&self, value: &serde_json::Value) -> Result<I, DecodeError> {
+        match value {
+            serde_json::Value::Number(n) => n
+                .as_u64()
+                .map(Into::into)
+                .ok_or(DecodeError::InvalidInteger(value.to_string())),
+            _ => Err(DecodeError::IncorrectType(
+                "Number".to_string(),
+                value.to_string(),
+            )),
+        }
+    }
+}
+
+pub fn float<'a, I: From<f64>>() -> impl Decoder<'a, I> {
+    FloatDecoder {
+        phantom: PhantomData,
+    }
+}
+
+pub struct FloatDecoder<I: From<f64>> {
+    phantom: PhantomData<I>,
+}
+
+impl<'a, I> Decoder<'a, I> for FloatDecoder<I>
+where
+    I: From<f64>,
+{
+    fn decode(&self, value: &serde_json::Value) -> Result<I, DecodeError> {
+        match value {
+            serde_json::Value::Number(n) => n
+                .as_f64()
+                .map(Into::into)
+                .ok_or(DecodeError::InvalidInteger(value.to_string())),
+            _ => Err(DecodeError::IncorrectType(
+                "Number".to_string(),
+                value.to_string(),
+            )),
+        }
+    }
+}
+
+pub fn boolean<'a>() -> impl Decoder<'a, bool> {
+    BooleanDecoder {}
+}
+
+pub struct BooleanDecoder {}
+
+impl<'a> Decoder<'a, bool> for BooleanDecoder {
+    fn decode(&self, value: &serde_json::Value) -> Result<bool, DecodeError> {
+        match value {
+            serde_json::Value::Bool(b) => Ok(*b),
+            _ => Err(DecodeError::IncorrectType(
+                "Boolean".to_string(),
+                value.to_string(),
+            )),
+        }
+    }
+}
+
+macro_rules! define_map_decoder {
+    ($fn_name:ident, $struct_name:ident, $($i:ident),+) => {
+        pub fn $fn_name<'a, F, $($i,)+ NewDecodesTo>(
+            func: F,
+            $($i: impl Decoder<'a, $i> +'static,)+
+        ) -> impl Decoder<'a, NewDecodesTo>
+        where F: Fn($($i, )+) -> NewDecodesTo + 'a
+        {
+            $struct_name {
+                func: Box::new(func),
+                decoders: (($(Box::new($i), )+))
+            }
+        }
+
+        struct $struct_name<'a, DecodesTo, $($i,)+> {
+            func: Box<dyn Fn($($i,)+) -> DecodesTo + 'a>,
+            decoders: ($(Box<dyn Decoder<'a, $i>>,)+ )
+        }
+
+        impl<'a, DecodesTo, $($i,)+> Decoder<'a, DecodesTo>
+        for $struct_name<'a, DecodesTo, $($i,)+> {
+            fn decode(&self, value: &serde_json::Value) -> Result<DecodesTo, DecodeError> {
+                let ($($i, )+) = &self.decoders;
+                $(
+                    let $i = (*$i).decode(value)?;
+                )+
+                let result = (*self.func)($($i, )+);
+                Ok(result)
+            }
+        }
+    }
+}
+
+define_map_decoder!(map2, Fn2Decoder, _1, _2);
+define_map_decoder!(map3, Fn3Decoder, _1, _2, _3);
+define_map_decoder!(map4, Fn4Decoder, _1, _2, _3, _4);
+define_map_decoder!(map5, Fn5Decoder, _1, _2, _3, _4, _5);
+define_map_decoder!(map6, Fn6Decoder, _1, _2, _3, _4, _5, _6);
+define_map_decoder!(map7, Fn7Decoder, _1, _2, _3, _4, _5, _6, _7);
+define_map_decoder!(map8, Fn8Decoder, _1, _2, _3, _4, _5, _6, _7, _8);
+define_map_decoder!(map9, Fn9Decoder, _1, _2, _3, _4, _5, _6, _7, _8, _9);
+define_map_decoder!(map10, Fn10Decoder, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10);
+define_map_decoder!(
+    map11,
+    Fn11Decoder,
+    _1,
+    _2,
+    _3,
+    _4,
+    _5,
+    _6,
+    _7,
+    _8,
+    _9,
+    _10,
+    _11
+);
+define_map_decoder!(
+    map12,
+    Fn12Decoder,
+    _1,
+    _2,
+    _3,
+    _4,
+    _5,
+    _6,
+    _7,
+    _8,
+    _9,
+    _10,
+    _11,
+    _12
+);
+define_map_decoder!(
+    map13,
+    Fn13Decoder,
+    _1,
+    _2,
+    _3,
+    _4,
+    _5,
+    _6,
+    _7,
+    _8,
+    _9,
+    _10,
+    _11,
+    _12,
+    _13
+);
+
 pub fn map1<'a, F, T1, NewDecodesTo>(
     func: F,
     d1: impl Decoder<'a, T1> + 'static,
