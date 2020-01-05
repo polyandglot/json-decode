@@ -20,7 +20,7 @@ pub trait Decoder<'a, DecodesTo> {
 
 #[derive(Debug, PartialEq)]
 pub enum DecodeError {
-    MissingField(String),
+    MissingField(String, String),
     IncorrectType(String, String),
     InvalidInteger(String),
     SerdeError(String),
@@ -29,8 +29,6 @@ pub enum DecodeError {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // TODO: test out DSL
 
     #[derive(Debug, PartialEq)]
     struct TestStruct {
@@ -106,7 +104,7 @@ mod tests {
 
     #[test]
     fn decoding_a_list() {
-        let decoder = list::<_, Vec<_>, _>(string());
+        let decoder = list::<_, Vec<_>>(string());
 
         let json = serde_json::json!(["one", "two", "three", "four"]);
 

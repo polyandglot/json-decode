@@ -4,17 +4,20 @@ use std::marker::PhantomData;
 
 pub fn field<'a, T>(
     field_name: &str,
-    decoder: impl Decoder<'a, T> + 'static,
-) -> impl Decoder<'a, T> {
-    FieldDecoder {
+    decoder: Box<dyn Decoder<'a, T> + 'a>,
+) -> Box<dyn Decoder<'a, T> + 'a>
+where
+    T: 'a,
+{
+    Box::new(FieldDecoder {
         field_name: field_name.to_string(),
-        inner_decoder: Box::new(decoder),
-    }
+        inner_decoder: decoder,
+    })
 }
 
 pub struct FieldDecoder<'a, DecodesTo> {
     field_name: String,
-    inner_decoder: Box<dyn Decoder<'a, DecodesTo>>,
+    inner_decoder: Box<dyn Decoder<'a, DecodesTo> + 'a>,
 }
 
 impl<'a, DecodesTo> Decoder<'a, DecodesTo> for FieldDecoder<'a, DecodesTo> {
@@ -22,8 +25,11 @@ impl<'a, DecodesTo> Decoder<'a, DecodesTo> for FieldDecoder<'a, DecodesTo> {
         match value {
             serde_json::Value::Object(map) => map
                 .get(&self.field_name)
-                .ok_or(DecodeError::MissingField(self.field_name.clone()))
-                .and_then(|value| (*self.inner_decoder).decode(value)),
+                .ok_or(DecodeError::MissingField(
+                    self.field_name.clone(),
+                    value.to_string(),
+                ))
+                .and_then(|inner_value| (*self.inner_decoder).decode(inner_value)),
             _ => Err(DecodeError::IncorrectType(
                 "Object".to_string(),
                 value.to_string(),
@@ -32,8 +38,8 @@ impl<'a, DecodesTo> Decoder<'a, DecodesTo> for FieldDecoder<'a, DecodesTo> {
     }
 }
 
-pub fn string<'a>() -> impl Decoder<'a, String> {
-    StringDecoder {}
+pub fn string<'a>() -> Box<impl Decoder<'a, String> + 'a> {
+    Box::new(StringDecoder {})
 }
 
 pub struct StringDecoder {}
@@ -50,10 +56,13 @@ impl<'a> Decoder<'a, String> for StringDecoder {
     }
 }
 
-pub fn integer<'a, I: From<i64>>() -> impl Decoder<'a, I> {
-    IntDecoder {
+pub fn integer<'a, I: From<i64>>() -> Box<dyn Decoder<'a, I> + 'a>
+where
+    I: 'a,
+{
+    Box::new(IntDecoder {
         phantom: PhantomData,
-    }
+    })
 }
 
 pub struct IntDecoder<I: From<i64>> {
@@ -78,10 +87,13 @@ where
     }
 }
 
-pub fn unsigned_integer<'a, I: From<u64>>() -> impl Decoder<'a, I> {
-    UIntDecoder {
+pub fn unsigned_integer<'a, I: From<u64>>() -> Box<dyn Decoder<'a, I> + 'a>
+where
+    I: 'a,
+{
+    Box::new(UIntDecoder {
         phantom: PhantomData,
-    }
+    })
 }
 
 pub struct UIntDecoder<I: From<u64>> {
@@ -106,10 +118,13 @@ where
     }
 }
 
-pub fn float<'a, I: From<f64>>() -> impl Decoder<'a, I> {
-    FloatDecoder {
+pub fn float<'a, I: From<f64>>() -> Box<dyn Decoder<'a, I> + 'a>
+where
+    I: 'a,
+{
+    Box::new(FloatDecoder {
         phantom: PhantomData,
-    }
+    })
 }
 
 pub struct FloatDecoder<I: From<f64>> {
@@ -134,8 +149,8 @@ where
     }
 }
 
-pub fn boolean<'a>() -> impl Decoder<'a, bool> {
-    BooleanDecoder {}
+pub fn boolean<'a>() -> Box<dyn Decoder<'a, bool> + 'a> {
+    Box::new(BooleanDecoder {})
 }
 
 pub struct BooleanDecoder {}
@@ -167,7 +182,7 @@ where
 
 pub struct ListDecoder<'a, Item, DecodesTo: FromIterator<Item>> {
     phantom: PhantomData<DecodesTo>,
-    inner_decoder: Box<dyn Decoder<'a, Item>>,
+    inner_decoder: Box<dyn Decoder<'a, Item> + 'a>,
 }
 
 impl<'a, Item, DecodesTo> Decoder<'a, DecodesTo> for ListDecoder<'a, Item, DecodesTo>
@@ -188,23 +203,52 @@ where
     }
 }
 
+pub fn map<'a, F, T1, NewDecodesTo>(
+    func: F,
+    d1: Box<dyn Decoder<'a, T1> + 'a>,
+) -> Box<dyn Decoder<'a, NewDecodesTo> + 'a>
+where
+    F: Fn(T1) -> NewDecodesTo + 'a,
+    NewDecodesTo: 'a,
+    T1: 'a,
+{
+    Box::new(DecoderFn1 {
+        func: Box::new(func),
+        decoder: d1,
+    })
+}
+
+pub struct DecoderFn1<'a, DecodesTo, Argument1> {
+    func: Box<dyn Fn(Argument1) -> DecodesTo + 'a>,
+    decoder: Box<dyn Decoder<'a, Argument1> + 'a>,
+}
+
+impl<'a, DecodesTo, Argument1> Decoder<'a, DecodesTo> for DecoderFn1<'a, DecodesTo, Argument1> {
+    fn decode(&self, value: &serde_json::Value) -> Result<DecodesTo, DecodeError> {
+        let arg0 = self.decoder.decode(value)?;
+        Ok((*self.func)(arg0))
+    }
+}
+
 macro_rules! define_map_decoder {
     ($fn_name:ident, $struct_name:ident, $($i:ident),+) => {
         pub fn $fn_name<'a, F, $($i,)+ NewDecodesTo>(
             func: F,
-            $($i: impl Decoder<'a, $i> +'static,)+
-        ) -> impl Decoder<'a, NewDecodesTo>
-        where F: Fn($($i, )+) -> NewDecodesTo + 'a
+            $($i: Box<dyn Decoder<'a, $i> +'a>,)+
+        ) -> Box<dyn Decoder<'a, NewDecodesTo> + 'a>
+        where F: Fn($($i, )+) -> NewDecodesTo + 'a,
+            NewDecodesTo: 'a,
+            $($i: 'a,)+
         {
-            $struct_name {
+            Box::new($struct_name {
                 func: Box::new(func),
-                decoders: (($(Box::new($i), )+))
-            }
+                decoders: (($($i, )+))
+            })
         }
 
         struct $struct_name<'a, DecodesTo, $($i,)+> {
             func: Box<dyn Fn($($i,)+) -> DecodesTo + 'a>,
-            decoders: ($(Box<dyn Decoder<'a, $i>>,)+ )
+            decoders: ($(Box<dyn Decoder<'a, $i> + 'a>,)+ )
         }
 
         impl<'a, DecodesTo, $($i,)+> Decoder<'a, DecodesTo>
@@ -278,31 +322,6 @@ define_map_decoder!(
     _12,
     _13
 );
-
-pub fn map1<'a, F, T1, NewDecodesTo>(
-    func: F,
-    d1: impl Decoder<'a, T1> + 'static,
-) -> impl Decoder<'a, NewDecodesTo>
-where
-    F: Fn(T1) -> NewDecodesTo + 'a,
-{
-    DecoderFn1 {
-        func: Box::new(func),
-        decoder: Box::new(d1),
-    }
-}
-
-pub struct DecoderFn1<'a, DecodesTo, Argument1> {
-    func: Box<dyn Fn(Argument1) -> DecodesTo + 'a>,
-    decoder: Box<dyn Decoder<'a, Argument1>>,
-}
-
-impl<'a, DecodesTo, Argument1> Decoder<'a, DecodesTo> for DecoderFn1<'a, DecodesTo, Argument1> {
-    fn decode(&self, value: &serde_json::Value) -> Result<DecodesTo, DecodeError> {
-        let arg0 = (*self.decoder).decode(value)?;
-        Ok((*self.func)(arg0))
-    }
-}
 
 pub struct SerdeDecoder<T> {
     phantom: PhantomData<T>,
