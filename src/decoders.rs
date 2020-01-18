@@ -349,6 +349,163 @@ define_map_decoder!(
     _12,
     _13
 );
+define_map_decoder!(
+    map14,
+    Fn14Decoder,
+    _1,
+    _2,
+    _3,
+    _4,
+    _5,
+    _6,
+    _7,
+    _8,
+    _9,
+    _10,
+    _11,
+    _12,
+    _13,
+    _14
+);
+define_map_decoder!(
+    map15,
+    Fn15Decoder,
+    _1,
+    _2,
+    _3,
+    _4,
+    _5,
+    _6,
+    _7,
+    _8,
+    _9,
+    _10,
+    _11,
+    _12,
+    _13,
+    _14,
+    _15
+);
+define_map_decoder!(
+    map16,
+    Fn16Decoder,
+    _1,
+    _2,
+    _3,
+    _4,
+    _5,
+    _6,
+    _7,
+    _8,
+    _9,
+    _10,
+    _11,
+    _12,
+    _13,
+    _14,
+    _15,
+    _16
+);
+define_map_decoder!(
+    map17,
+    Fn17Decoder,
+    _1,
+    _2,
+    _3,
+    _4,
+    _5,
+    _6,
+    _7,
+    _8,
+    _9,
+    _10,
+    _11,
+    _12,
+    _13,
+    _14,
+    _15,
+    _16,
+    _17
+);
+define_map_decoder!(
+    map18,
+    Fn18Decoder,
+    _1,
+    _2,
+    _3,
+    _4,
+    _5,
+    _6,
+    _7,
+    _8,
+    _9,
+    _10,
+    _11,
+    _12,
+    _13,
+    _14,
+    _15,
+    _16,
+    _17,
+    _18
+);
+define_map_decoder!(
+    map19,
+    Fn19Decoder,
+    _1,
+    _2,
+    _3,
+    _4,
+    _5,
+    _6,
+    _7,
+    _8,
+    _9,
+    _10,
+    _11,
+    _12,
+    _13,
+    _14,
+    _15,
+    _16,
+    _17,
+    _18,
+    _19
+);
+define_map_decoder!(
+    map20,
+    Fn20Decoder,
+    _1,
+    _2,
+    _3,
+    _4,
+    _5,
+    _6,
+    _7,
+    _8,
+    _9,
+    _10,
+    _11,
+    _12,
+    _13,
+    _14,
+    _15,
+    _16,
+    _17,
+    _18,
+    _19,
+    _20
+);
+
+pub fn serde<'a, T>() -> Box<dyn Decoder<'a, T> + 'a>
+where
+    for<'de> T: serde::Deserialize<'de>,
+    T: 'a,
+{
+    Box::new(SerdeDecoder {
+        phantom: PhantomData,
+    })
+}
 
 pub struct SerdeDecoder<T> {
     phantom: PhantomData<T>,
