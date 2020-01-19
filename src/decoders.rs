@@ -2,10 +2,9 @@ use super::{DecodeError, Decoder};
 use std::iter::FromIterator;
 use std::marker::PhantomData;
 
-pub fn field<'a, T>(
-    field_name: &str,
-    decoder: Box<dyn Decoder<'a, T> + 'a>,
-) -> Box<dyn Decoder<'a, T> + 'a>
+pub type BoxDecoder<'a, T> = Box<dyn Decoder<'a, T> + 'a + Send + Sync>;
+
+pub fn field<'a, T>(field_name: &str, decoder: BoxDecoder<'a, T>) -> BoxDecoder<'a, T>
 where
     T: 'a,
 {
@@ -17,7 +16,7 @@ where
 
 pub struct FieldDecoder<'a, DecodesTo> {
     field_name: String,
-    inner_decoder: Box<dyn Decoder<'a, DecodesTo> + 'a>,
+    inner_decoder: BoxDecoder<'a, DecodesTo>,
 }
 
 impl<'a, DecodesTo> Decoder<'a, DecodesTo> for FieldDecoder<'a, DecodesTo> {
@@ -38,7 +37,7 @@ impl<'a, DecodesTo> Decoder<'a, DecodesTo> for FieldDecoder<'a, DecodesTo> {
     }
 }
 
-pub fn string<'a>() -> Box<impl Decoder<'a, String> + 'a> {
+pub fn string() -> BoxDecoder<'static, String> {
     Box::new(StringDecoder {})
 }
 
@@ -56,9 +55,9 @@ impl<'a> Decoder<'a, String> for StringDecoder {
     }
 }
 
-pub fn integer<'a, I: From<i64>>() -> Box<dyn Decoder<'a, I> + 'a>
+pub fn integer<I: From<i64>>() -> BoxDecoder<'static, I>
 where
-    I: 'a,
+    I: 'static + Send + Sync,
 {
     Box::new(IntDecoder {
         phantom: PhantomData,
@@ -118,9 +117,9 @@ where
     }
 }
 
-pub fn float<'a, I: From<f64>>() -> Box<dyn Decoder<'a, I> + 'a>
+pub fn float<F: From<f64>>() -> BoxDecoder<'static, F>
 where
-    I: 'a,
+    F: 'static + Send + Sync,
 {
     Box::new(FloatDecoder {
         phantom: PhantomData,
@@ -131,6 +130,7 @@ pub struct FloatDecoder<I: From<f64>> {
     phantom: PhantomData<I>,
 }
 
+// TODO: Probably don't need from - just force f64 etc.
 impl<'a, I> Decoder<'a, I> for FloatDecoder<I>
 where
     I: From<f64>,
@@ -149,7 +149,7 @@ where
     }
 }
 
-pub fn boolean<'a>() -> Box<dyn Decoder<'a, bool> + 'a> {
+pub fn boolean() -> BoxDecoder<'static, bool> {
     Box::new(BooleanDecoder {})
 }
 
@@ -168,10 +168,10 @@ impl<'a> Decoder<'a, bool> for BooleanDecoder {
 }
 
 pub fn option<'a, DecodesTo>(
-    decoder: Box<dyn Decoder<'a, DecodesTo> + 'a>,
-) -> Box<dyn Decoder<'a, Option<DecodesTo>> + 'a>
+    decoder: BoxDecoder<'a, DecodesTo>,
+) -> BoxDecoder<'a, Option<DecodesTo>>
 where
-    DecodesTo: 'a,
+    DecodesTo: 'a + Send + Sync,
 {
     Box::new(OptionDecoder {
         inner_decoder: decoder,
@@ -179,7 +179,7 @@ where
 }
 
 pub struct OptionDecoder<'a, DecodesTo> {
-    inner_decoder: Box<dyn Decoder<'a, DecodesTo> + 'a>,
+    inner_decoder: BoxDecoder<'a, DecodesTo>,
 }
 
 impl<'a, DecodesTo> Decoder<'a, Option<DecodesTo>> for OptionDecoder<'a, DecodesTo>
@@ -194,11 +194,11 @@ where
     }
 }
 
-pub fn list<'a, Item, Collection>(
-    decoder: Box<dyn Decoder<'a, Item> + 'a>,
-) -> Box<dyn Decoder<'a, Collection> + 'a>
+// TODO: Difficulties using this due to type inference problems
+// look to re-work the interface somehow
+pub fn list<'a, Item, Collection>(decoder: BoxDecoder<'a, Item>) -> BoxDecoder<'a, Collection>
 where
-    Collection: FromIterator<Item> + 'a,
+    Collection: FromIterator<Item> + 'a + Send + Sync,
     Item: 'a,
 {
     Box::new(ListDecoder {
@@ -209,7 +209,7 @@ where
 
 pub struct ListDecoder<'a, Item, DecodesTo: FromIterator<Item>> {
     phantom: PhantomData<DecodesTo>,
-    inner_decoder: Box<dyn Decoder<'a, Item> + 'a>,
+    inner_decoder: BoxDecoder<'a, Item>,
 }
 
 impl<'a, Item, DecodesTo> Decoder<'a, DecodesTo> for ListDecoder<'a, Item, DecodesTo>
@@ -230,12 +230,10 @@ where
     }
 }
 
-pub fn map<'a, F, T1, NewDecodesTo>(
-    func: F,
-    d1: Box<dyn Decoder<'a, T1> + 'a>,
-) -> Box<dyn Decoder<'a, NewDecodesTo> + 'a>
+// TODO: Do we need the lifetimes here
+pub fn map<'a, F, T1, NewDecodesTo>(func: F, d1: BoxDecoder<'a, T1>) -> BoxDecoder<'a, NewDecodesTo>
 where
-    F: Fn(T1) -> NewDecodesTo + 'a,
+    F: (Fn(T1) -> NewDecodesTo) + 'a + Send + Sync,
     NewDecodesTo: 'a,
     T1: 'a,
 {
@@ -246,8 +244,8 @@ where
 }
 
 pub struct DecoderFn1<'a, DecodesTo, Argument1> {
-    func: Box<dyn Fn(Argument1) -> DecodesTo + 'a>,
-    decoder: Box<dyn Decoder<'a, Argument1> + 'a>,
+    func: Box<dyn Fn(Argument1) -> DecodesTo + 'a + Send + Sync>,
+    decoder: BoxDecoder<'a, Argument1>,
 }
 
 impl<'a, DecodesTo, Argument1> Decoder<'a, DecodesTo> for DecoderFn1<'a, DecodesTo, Argument1> {
@@ -261,9 +259,9 @@ macro_rules! define_map_decoder {
     ($fn_name:ident, $struct_name:ident, $($i:ident),+) => {
         pub fn $fn_name<'a, F, $($i,)+ NewDecodesTo>(
             func: F,
-            $($i: Box<dyn Decoder<'a, $i> +'a>,)+
-        ) -> Box<dyn Decoder<'a, NewDecodesTo> + 'a>
-        where F: Fn($($i, )+) -> NewDecodesTo + 'a,
+            $($i: BoxDecoder<'a, $i>,)+
+        ) -> BoxDecoder<'a, NewDecodesTo>
+        where F: Fn($($i, )+) -> NewDecodesTo + 'a + Send + Sync,
             NewDecodesTo: 'a,
             $($i: 'a,)+
         {
@@ -274,8 +272,8 @@ macro_rules! define_map_decoder {
         }
 
         struct $struct_name<'a, DecodesTo, $($i,)+> {
-            func: Box<dyn Fn($($i,)+) -> DecodesTo + 'a>,
-            decoders: ($(Box<dyn Decoder<'a, $i> + 'a>,)+ )
+            func: Box<dyn Fn($($i,)+) -> DecodesTo + 'a + Send + Sync>,
+            decoders: ($(BoxDecoder<'a, $i>,)+ )
         }
 
         impl<'a, DecodesTo, $($i,)+> Decoder<'a, DecodesTo>
@@ -497,10 +495,9 @@ define_map_decoder!(
     _20
 );
 
-pub fn serde<'a, T>() -> Box<dyn Decoder<'a, T> + 'a>
+pub fn serde<T>() -> BoxDecoder<'static, T>
 where
-    for<'de> T: serde::Deserialize<'de>,
-    T: 'a,
+    for<'de> T: serde::Deserialize<'de> + 'static + Send + Sync,
 {
     Box::new(SerdeDecoder {
         phantom: PhantomData,
@@ -529,7 +526,7 @@ where
     }
 }
 
-pub fn json<'a>() -> Box<dyn Decoder<'a, serde_json::Value> + 'a> {
+pub fn json() -> BoxDecoder<'static, serde_json::Value> {
     Box::new(JsonDecoder {})
 }
 

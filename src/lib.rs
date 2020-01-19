@@ -5,7 +5,7 @@ mod decoders;
 pub use decoders::{
     boolean, field, float, integer, json, list, map, map10, map11, map12, map13, map14, map15,
     map16, map17, map18, map19, map2, map20, map3, map4, map5, map6, map7, map8, map9, option,
-    serde, string,
+    serde, string, BoxDecoder,
 };
 
 pub trait Decoder<'a, DecodesTo> {
