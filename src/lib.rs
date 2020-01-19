@@ -46,7 +46,7 @@ mod tests {
 
     #[test]
     fn decode_a_struct() {
-        let decoder = map1(TestStruct::new, field("field_one", string()));
+        let decoder = map(TestStruct::new, field("field_one", string()));
 
         let json = serde_json::from_str(r#"{"field_one": "test"}"#).unwrap();
 
@@ -119,4 +119,18 @@ mod tests {
             ])
         )
     }
+
+    #[test]
+    fn decoding_opt_vec_opt() {
+        let decoder = option(list::<_, Vec<_>>(option(string())));
+
+        assert_eq!(
+            decoder.decode(&serde_json::json!(["hello", null])),
+            Ok(Some(vec![Some("hello".to_string()), None]))
+        );
+        assert_eq!(decoder.decode(&serde_json::json!(null)), Ok(None))
+    }
+
+    #[test]
+    fn decode_using_serde() {}
 }
