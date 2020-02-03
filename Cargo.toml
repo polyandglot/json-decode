@@ -6,6 +6,7 @@ edition = "2018"
 homepage = "https://github.com/polyandglot/json-decode"
 keywords = ["json", "decode"]
 description = "An elm inspired runtime JSON decoder for Rust"
+license = "MPL-2.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
