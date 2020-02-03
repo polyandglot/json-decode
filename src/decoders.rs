@@ -189,7 +189,7 @@ where
     fn decode(&self, value: &serde_json::Value) -> Result<Option<DecodesTo>, DecodeError> {
         match value {
             serde_json::Value::Null => Ok(None),
-            other => self.inner_decoder.decode(value).map(Some),
+            _ => self.inner_decoder.decode(value).map(Some),
         }
     }
 }
