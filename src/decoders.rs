@@ -508,14 +508,6 @@ pub struct SerdeDecoder<T> {
     phantom: PhantomData<T>,
 }
 
-impl<T> SerdeDecoder<T> {
-    fn new() -> SerdeDecoder<T> {
-        SerdeDecoder {
-            phantom: PhantomData,
-        }
-    }
-}
-
 impl<'a, DecodesTo> Decoder<'a, DecodesTo> for SerdeDecoder<DecodesTo>
 where
     for<'de> DecodesTo: serde::Deserialize<'de>,
