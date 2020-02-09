@@ -11,6 +11,10 @@ all APIs might be changed.
 
 ## Unreleased - yyyy-mm-dd
 
+### New Features
+
+- Added Error::Other so other crates can provide cutom error messages
+
 ## v0.1.0 - 2020-02-03
 
 - Initial release with support for most obvious types

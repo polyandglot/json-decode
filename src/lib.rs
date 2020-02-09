@@ -23,6 +23,7 @@ pub enum DecodeError {
     IncorrectType(String, String),
     InvalidInteger(String),
     SerdeError(String),
+    Other(String),
 }
 
 #[cfg(test)]
