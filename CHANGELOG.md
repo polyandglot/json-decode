@@ -11,6 +11,8 @@ all APIs might be changed.
 
 ## Unreleased - yyyy-mm-dd
 
+## v0.2.0 - 2020-02-09
+
 ### New Features
 
 - Added Error::Other so other crates can provide cutom error messages
