@@ -255,6 +255,34 @@ impl<'a, DecodesTo, Argument1> Decoder<'a, DecodesTo> for DecoderFn1<'a, Decodes
     }
 }
 
+pub fn and_then<'a, F, T, NewDecodesTo>(
+    func: F,
+    d: BoxDecoder<'a, T>,
+) -> BoxDecoder<'a, NewDecodesTo>
+where
+    F: (Fn(T) -> Result<NewDecodesTo, DecodeError>) + 'a + Send + Sync,
+    NewDecodesTo: 'a,
+    T: 'a,
+{
+    Box::new(DecoderAndThen {
+        func: Box::new(func),
+        decoder: d,
+    })
+}
+
+pub struct DecoderAndThen<'a, DecodesTo, Argument> {
+    func: Box<dyn Fn(Argument) -> Result<DecodesTo, DecodeError> + 'a + Send + Sync>,
+    decoder: BoxDecoder<'a, Argument>,
+}
+
+impl<'a, DecodesTo, Argument> Decoder<'a, DecodesTo> for DecoderAndThen<'a, DecodesTo, Argument> {
+    fn decode(&self, value: &serde_json::Value) -> Result<DecodesTo, DecodeError> {
+        let arg = self.decoder.decode(value)?;
+        let res = (*self.func)(arg)?;
+        Ok(res)
+    }
+}
+
 pub fn serde<T>() -> BoxDecoder<'static, T>
 where
     for<'de> T: serde::Deserialize<'de> + 'static + Send + Sync,

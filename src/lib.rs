@@ -2,8 +2,8 @@ mod decoders;
 mod map_fns;
 
 pub use decoders::{
-    boolean, field, float, integer, json, list, map, option, serde, string, unsigned_integer,
-    BoxDecoder,
+    and_then, boolean, field, float, integer, json, list, map, option, serde, string,
+    unsigned_integer, BoxDecoder,
 };
 pub use map_fns::*;
 
@@ -133,4 +133,28 @@ mod tests {
 
     #[test]
     fn decode_using_serde() {}
+
+    #[test]
+    fn test_and_then() {
+        let decoder = and_then(
+            |s| {
+                if s == "ok" {
+                    Ok(Some(s))
+                } else {
+                    Err(DecodeError::Other("Go Away".into()))
+                }
+            },
+            string(),
+        );
+
+        assert_eq!(
+            decoder.decode(&serde_json::json!("ok")),
+            Ok(Some("ok".to_string()))
+        );
+
+        assert_eq!(
+            decoder.decode(&serde_json::json!("fail")),
+            Err(DecodeError::Other("Go Away".into()))
+        );
+    }
 }
