@@ -11,6 +11,8 @@ all APIs might be changed.
 
 ## Unreleased - yyyy-mm-dd
 
+## v0.3.0 - 2020-05-24
+
 ### New Features
 
 - Added map functions up to map50.
