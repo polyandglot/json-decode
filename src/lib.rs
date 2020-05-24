@@ -1,10 +1,11 @@
 mod decoders;
+mod map_fns;
 
 pub use decoders::{
-    boolean, field, float, integer, json, list, map, map10, map11, map12, map13, map14, map15,
-    map16, map17, map18, map19, map2, map20, map3, map4, map5, map6, map7, map8, map9, option,
-    serde, string, unsigned_integer, BoxDecoder,
+    boolean, field, float, integer, json, list, map, option, serde, string, unsigned_integer,
+    BoxDecoder,
 };
+pub use map_fns::*;
 
 pub trait Decoder<'a, DecodesTo> {
     // OK, so theoretically this needs to store some functions & some collection of arguments.
