@@ -11,9 +11,11 @@ all APIs might be changed.
 
 ## Unreleased - yyyy-mm-dd
 
+## v0.4.0 - 2020-05-24
+
 ### New Features
 
-- Added and_then decoder function
+- Added `and_then` decoder function
 
 ## v0.3.0 - 2020-05-24
 
