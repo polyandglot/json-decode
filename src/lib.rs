@@ -2,8 +2,8 @@ mod decoders;
 mod map_fns;
 
 pub use decoders::{
-    and_then, boolean, field, float, integer, json, list, map, option, serde, string,
-    unsigned_integer, BoxDecoder,
+    and_then, boolean, fail, field, float, integer, json, list, map, option, serde, string,
+    succeed, unsigned_integer, BoxDecoder,
 };
 pub use map_fns::*;
 
@@ -139,9 +139,9 @@ mod tests {
         let decoder = and_then(
             |s| {
                 if s == "ok" {
-                    Ok(Some(s))
+                    succeed(Some(s))
                 } else {
-                    Err(DecodeError::Other("Go Away".into()))
+                    fail("Go Away")
                 }
             },
             string(),

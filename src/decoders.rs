@@ -255,34 +255,6 @@ impl<'a, DecodesTo, Argument1> Decoder<'a, DecodesTo> for DecoderFn1<'a, Decodes
     }
 }
 
-pub fn and_then<'a, F, T, NewDecodesTo>(
-    func: F,
-    d: BoxDecoder<'a, T>,
-) -> BoxDecoder<'a, NewDecodesTo>
-where
-    F: (Fn(T) -> Result<NewDecodesTo, DecodeError>) + 'a + Send + Sync,
-    NewDecodesTo: 'a,
-    T: 'a,
-{
-    Box::new(DecoderAndThen {
-        func: Box::new(func),
-        decoder: d,
-    })
-}
-
-pub struct DecoderAndThen<'a, DecodesTo, Argument> {
-    func: Box<dyn Fn(Argument) -> Result<DecodesTo, DecodeError> + 'a + Send + Sync>,
-    decoder: BoxDecoder<'a, Argument>,
-}
-
-impl<'a, DecodesTo, Argument> Decoder<'a, DecodesTo> for DecoderAndThen<'a, DecodesTo, Argument> {
-    fn decode(&self, value: &serde_json::Value) -> Result<DecodesTo, DecodeError> {
-        let arg = self.decoder.decode(value)?;
-        let res = (*self.func)(arg)?;
-        Ok(res)
-    }
-}
-
 pub fn serde<T>() -> BoxDecoder<'static, T>
 where
     for<'de> T: serde::Deserialize<'de> + 'static + Send + Sync,
@@ -316,5 +288,74 @@ impl<'a> Decoder<'a, serde_json::Value> for JsonDecoder {
     fn decode(&self, value: &serde_json::Value) -> Result<serde_json::Value, DecodeError> {
         // TODO: Figure out if we can get rid of this clone somehow?
         Ok(value.clone())
+    }
+}
+
+pub fn succeed<'a, V>(value: V) -> BoxDecoder<'a, V>
+where
+    V: Clone + Send + Sync + 'a,
+{
+    Box::new(SucceedDecoder { value })
+}
+
+pub struct SucceedDecoder<V> {
+    value: V,
+}
+
+impl<'a, V> Decoder<'a, V> for SucceedDecoder<V>
+where
+    V: Clone + Send + Sync + 'a,
+{
+    fn decode(&self, _value: &serde_json::Value) -> Result<V, DecodeError> {
+        // Be nice to figure out a way to avoid this clone...
+        return Ok(self.value.clone());
+    }
+}
+
+pub fn fail<V>(error: impl Into<String>) -> BoxDecoder<'static, V> {
+    // TODO: Might be nice to get this using a std::Error but it was
+    // surprisingly tricky.  For now just using a String instead.
+    Box::new(FailDecoder {
+        error: error.into(),
+    })
+}
+
+pub struct FailDecoder {
+    error: String,
+}
+
+impl<'a, V> Decoder<'a, V> for FailDecoder {
+    fn decode(&self, _value: &serde_json::Value) -> Result<V, DecodeError> {
+        // Be nice to figure out a way to avoid this clone...
+        return Err(DecodeError::Other(self.error.clone()));
+    }
+}
+
+pub fn and_then<'a, F, T, NewDecodesTo>(
+    func: F,
+    d: BoxDecoder<'a, T>,
+) -> BoxDecoder<'a, NewDecodesTo>
+where
+    F: (Fn(T) -> BoxDecoder<'a, NewDecodesTo>) + 'a + Send + Sync,
+    NewDecodesTo: 'a,
+    T: 'a,
+{
+    Box::new(DecoderAndThen {
+        func: Box::new(func),
+        decoder: d,
+    })
+}
+
+pub struct DecoderAndThen<'a, DecodesTo, Argument> {
+    func: Box<dyn Fn(Argument) -> BoxDecoder<'a, DecodesTo> + 'a + Send + Sync>,
+    decoder: BoxDecoder<'a, Argument>,
+}
+
+impl<'a, DecodesTo, Argument> Decoder<'a, DecodesTo> for DecoderAndThen<'a, DecodesTo, Argument> {
+    fn decode(&self, value: &serde_json::Value) -> Result<DecodesTo, DecodeError> {
+        let func_param = self.decoder.decode(value)?;
+        let inner_decoder = (*self.func)(func_param);
+        let res = inner_decoder.decode(value)?;
+        Ok(res)
     }
 }
