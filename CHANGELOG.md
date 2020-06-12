@@ -11,6 +11,10 @@ all APIs might be changed.
 
 ## Unreleased - yyyy-mm-dd
 
+### Bug Fixes
+
+- `DecodeError` now implements `std::error::Error`
+
 ## v0.4.0 - 2020-05-24
 
 ### New Features

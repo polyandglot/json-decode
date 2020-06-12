@@ -18,12 +18,17 @@ pub trait Decoder<'a, DecodesTo> {
     fn decode(&self, value: &serde_json::Value) -> Result<DecodesTo, DecodeError>;
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(thiserror::Error, Debug, PartialEq)]
 pub enum DecodeError {
+    #[error("Could not find field {0} in {1}")]
     MissingField(String, String),
+    #[error("Expected a {0} but found a {1}")]
     IncorrectType(String, String),
+    #[error("Invalid integer: {0}")]
     InvalidInteger(String),
+    #[error("Serde error: {0}")]
     SerdeError(String),
+    #[error("Error: {0}")]
     Other(String),
 }
 
