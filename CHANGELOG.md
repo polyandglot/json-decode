@@ -11,6 +11,8 @@ all APIs might be changed.
 
 ## Unreleased - yyyy-mm-dd
 
+## v0.5.0 - 2020-07-06
+
 ### New Features
 
 - `integer` & `unsigned_integer` types now use TryInto instead of Into,

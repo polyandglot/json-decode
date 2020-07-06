@@ -1,6 +1,6 @@
 [package]
 name = "json-decode"
-version = "0.4.1"
+version = "0.5.0"
 authors = ["Graeme Coupar <graeme@polyandglot.dev>"]
 edition = "2018"
 homepage = "https://github.com/polyandglot/json-decode"
