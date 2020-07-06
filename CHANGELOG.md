@@ -11,6 +11,15 @@ all APIs might be changed.
 
 ## Unreleased - yyyy-mm-dd
 
+### New Features
+
+- `integer` & `unsigned_integer` types now use TryInto instead of Into,
+  allowing them to be used with types smaller than i64 & u64.  Attempting to
+  decode an integer larger than a type can handle will result in a decode
+  error.
+
+## v0.4.1 - 2020-06-12
+
 ### Bug Fixes
 
 - `DecodeError` now implements `std::error::Error`

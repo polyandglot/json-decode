@@ -1,4 +1,5 @@
 use super::{DecodeError, Decoder};
+use std::convert::{TryFrom, TryInto};
 use std::iter::FromIterator;
 use std::marker::PhantomData;
 
@@ -55,7 +56,7 @@ impl<'a> Decoder<'a, String> for StringDecoder {
     }
 }
 
-pub fn integer<I: From<i64>>() -> BoxDecoder<'static, I>
+pub fn integer<I: TryFrom<i64>>() -> BoxDecoder<'static, I>
 where
     I: 'static + Send + Sync,
 {
@@ -64,20 +65,25 @@ where
     })
 }
 
-pub struct IntDecoder<I: From<i64>> {
+pub struct IntDecoder<I: TryFrom<i64>> {
     phantom: PhantomData<I>,
 }
 
 impl<'a, I> Decoder<'a, I> for IntDecoder<I>
 where
-    I: From<i64>,
+    I: TryFrom<i64>,
 {
     fn decode(&self, value: &serde_json::Value) -> Result<I, DecodeError> {
         match value {
-            serde_json::Value::Number(n) => n
-                .as_i64()
-                .map(Into::into)
-                .ok_or(DecodeError::InvalidInteger(value.to_string())),
+            serde_json::Value::Number(n) => {
+                let int64 = n
+                    .as_i64()
+                    .ok_or(DecodeError::InvalidInteger(value.to_string()))?;
+
+                Ok(int64.try_into().map_err(|_| {
+                    DecodeError::IntegerOverflow(value.to_string(), std::any::type_name::<I>())
+                })?)
+            }
             _ => Err(DecodeError::IncorrectType(
                 "Number".to_string(),
                 value.to_string(),
@@ -86,7 +92,7 @@ where
     }
 }
 
-pub fn unsigned_integer<'a, I: From<u64>>() -> Box<dyn Decoder<'a, I> + 'a>
+pub fn unsigned_integer<'a, I: TryFrom<u64>>() -> Box<dyn Decoder<'a, I> + 'a>
 where
     I: 'a,
 {
@@ -95,20 +101,25 @@ where
     })
 }
 
-pub struct UIntDecoder<I: From<u64>> {
+pub struct UIntDecoder<I: TryFrom<u64>> {
     phantom: PhantomData<I>,
 }
 
 impl<'a, I> Decoder<'a, I> for UIntDecoder<I>
 where
-    I: From<u64>,
+    I: TryFrom<u64>,
 {
     fn decode(&self, value: &serde_json::Value) -> Result<I, DecodeError> {
         match value {
-            serde_json::Value::Number(n) => n
-                .as_u64()
-                .map(Into::into)
-                .ok_or(DecodeError::InvalidInteger(value.to_string())),
+            serde_json::Value::Number(n) => {
+                let uint64 = n
+                    .as_u64()
+                    .ok_or(DecodeError::InvalidInteger(value.to_string()))?;
+
+                Ok(uint64.try_into().map_err(|_| {
+                    DecodeError::IntegerOverflow(value.to_string(), std::any::type_name::<I>())
+                })?)
+            }
             _ => Err(DecodeError::IncorrectType(
                 "Number".to_string(),
                 value.to_string(),

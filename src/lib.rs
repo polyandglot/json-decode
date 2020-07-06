@@ -26,6 +26,8 @@ pub enum DecodeError {
     IncorrectType(String, String),
     #[error("Invalid integer: {0}")]
     InvalidInteger(String),
+    #[error("Integer {0} was too big to decode as {1}")]
+    IntegerOverflow(String, &'static str),
     #[error("Serde error: {0}")]
     SerdeError(String),
     #[error("Error: {0}")]
@@ -160,6 +162,29 @@ mod tests {
         assert_eq!(
             decoder.decode(&serde_json::json!("fail")),
             Err(DecodeError::Other("Go Away".into()))
+        );
+    }
+
+    #[test]
+    fn decoding_integers() {
+        assert_eq!(integer().decode(&serde_json::json!(1)), Ok(1 as i32));
+        assert_eq!(integer().decode(&serde_json::json!(1)), Ok(1 as i64));
+        assert_eq!(
+            integer::<i8>().decode(&serde_json::json!(512)),
+            Err(DecodeError::IntegerOverflow("512".to_string(), "i8"))
+        );
+
+        assert_eq!(
+            unsigned_integer().decode(&serde_json::json!(1)),
+            Ok(1 as u32)
+        );
+        assert_eq!(
+            unsigned_integer().decode(&serde_json::json!(1)),
+            Ok(1 as u64)
+        );
+        assert_eq!(
+            unsigned_integer::<u8>().decode(&serde_json::json!(512)),
+            Err(DecodeError::IntegerOverflow("512".to_string(), "u8"))
         );
     }
 }
