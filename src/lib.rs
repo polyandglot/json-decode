@@ -45,9 +45,7 @@ mod tests {
 
     impl TestStruct {
         fn new(field_one: String) -> Self {
-            TestStruct {
-                field_one: field_one,
-            }
+            TestStruct { field_one }
         }
     }
 
@@ -166,6 +164,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::unnecessary_cast)]
     fn decoding_integers() {
         assert_eq!(integer().decode(&serde_json::json!(1)), Ok(1 as i32));
         assert_eq!(integer().decode(&serde_json::json!(1)), Ok(1 as i64));

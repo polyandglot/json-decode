@@ -2,6 +2,7 @@ use crate::{decoders::BoxDecoder, DecodeError, Decoder};
 
 macro_rules! define_map_decoder {
     ($fn_name:ident, $struct_name:ident, $($i:ident),+) => {
+        #[allow(clippy::too_many_arguments)]
         pub fn $fn_name<'a, F, $($i,)+ NewDecodesTo>(
             func: F,
             $($i: BoxDecoder<'a, $i>,)+

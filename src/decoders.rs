@@ -25,10 +25,9 @@ impl<'a, DecodesTo> Decoder<'a, DecodesTo> for FieldDecoder<'a, DecodesTo> {
         match value {
             serde_json::Value::Object(map) => map
                 .get(&self.field_name)
-                .ok_or(DecodeError::MissingField(
-                    self.field_name.clone(),
-                    value.to_string(),
-                ))
+                .ok_or_else(|| {
+                    DecodeError::MissingField(self.field_name.clone(), value.to_string())
+                })
                 .and_then(|inner_value| (*self.inner_decoder).decode(inner_value)),
             _ => Err(DecodeError::IncorrectType(
                 "Object".to_string(),
@@ -78,7 +77,7 @@ where
             serde_json::Value::Number(n) => {
                 let int64 = n
                     .as_i64()
-                    .ok_or(DecodeError::InvalidInteger(value.to_string()))?;
+                    .ok_or_else(|| DecodeError::InvalidInteger(value.to_string()))?;
 
                 Ok(int64.try_into().map_err(|_| {
                     DecodeError::IntegerOverflow(value.to_string(), std::any::type_name::<I>())
@@ -114,7 +113,7 @@ where
             serde_json::Value::Number(n) => {
                 let uint64 = n
                     .as_u64()
-                    .ok_or(DecodeError::InvalidInteger(value.to_string()))?;
+                    .ok_or_else(|| DecodeError::InvalidInteger(value.to_string()))?;
 
                 Ok(uint64.try_into().map_err(|_| {
                     DecodeError::IntegerOverflow(value.to_string(), std::any::type_name::<I>())
@@ -151,7 +150,7 @@ where
             serde_json::Value::Number(n) => n
                 .as_f64()
                 .map(Into::into)
-                .ok_or(DecodeError::InvalidInteger(value.to_string())),
+                .ok_or_else(|| DecodeError::InvalidInteger(value.to_string())),
             _ => Err(DecodeError::IncorrectType(
                 "Number".to_string(),
                 value.to_string(),
@@ -319,7 +318,7 @@ where
 {
     fn decode(&self, _value: &serde_json::Value) -> Result<V, DecodeError> {
         // Be nice to figure out a way to avoid this clone...
-        return Ok(self.value.clone());
+        Ok(self.value.clone())
     }
 }
 
@@ -338,7 +337,7 @@ pub struct FailDecoder {
 impl<'a, V> Decoder<'a, V> for FailDecoder {
     fn decode(&self, _value: &serde_json::Value) -> Result<V, DecodeError> {
         // Be nice to figure out a way to avoid this clone...
-        return Err(DecodeError::Other(self.error.clone()));
+        Err(DecodeError::Other(self.error.clone()))
     }
 }
 

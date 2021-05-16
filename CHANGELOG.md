@@ -11,6 +11,10 @@ all APIs might be changed.
 
 ## Unreleased - yyyy-mm-dd
 
+### Bug Fixes
+
+- Fixes some inefficiencies when decoding (particularly in the `FieldDecoder`).
+
 ## v0.5.0 - 2020-07-06
 
 ### New Features
